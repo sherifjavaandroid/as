@@ -495,4 +495,316 @@ class MyApp extends StatelessWidget {
     );
   }
 }
+// main.dart
+import 'dart:async';
+import 'package:flutter/material.dart';
+import 'package:location/location.dart';
+import 'package:sensors_plus/sensors_plus.dart';
+import 'package:http/http.dart' as http;
+import 'package:geolocator/geolocator.dart';
+import 'dart:isolate';
+import 'package:flutter_background_service/flutter_background_service.dart';
 
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // تشغيل خدمة في الخلفية بدون قيود
+  await initializeBackgroundService();
+  
+  runApp(MyApp());
+}
+
+// خدمة في الخلفية تعمل باستمرار
+Future<void> initializeBackgroundService() async {
+  final service = FlutterBackgroundService();
+  
+  await service.configure(
+    androidConfiguration: AndroidConfiguration(
+      onStart: onStart,
+      autoStart: true,
+      isForegroundMode: true,
+    ),
+    iosConfiguration: IosConfiguration(
+      autoStart: true,
+      onForeground: onStart,
+      onBackground: onIosBackground,
+    ),
+  );
+  
+  service.startService();
+}
+
+// وظيفة تعمل في الخلفية على iOS
+bool onIosBackground() {
+  // عمليات مستمرة في الخلفية
+  Timer.periodic(Duration(seconds: 5), (timer) {
+    print('تشغيل في الخلفية لنظام iOS');
+  });
+  return true;
+}
+
+// وظيفة تعمل في الخلفية لكل الأنظمة
+void onStart() {
+  // عمليات مستمرة للموقع الجغرافي والشبكة في الخلفية
+  Timer.periodic(Duration(seconds: 10), (timer) {
+    updateLocation();
+    fetchDataFromServer();
+  });
+}
+
+// تحديث الموقع بشكل مستمر
+Future<void> updateLocation() async {
+  try {
+    Position position = await Geolocator.getCurrentPosition(
+      desiredAccuracy: LocationAccuracy.bestForNavigation, // دقة عالية جدًا
+    );
+    print('الموقع: ${position.latitude}, ${position.longitude}');
+  } catch (e) {
+    print('خطأ في تحديد الموقع: $e');
+  }
+}
+
+// طلبات شبكة متكررة
+Future<void> fetchDataFromServer() async {
+  try {
+    await http.get(Uri.parse('https://api.example.com/data'));
+    print('تم جلب البيانات من الخادم');
+  } catch (e) {
+    print('خطأ في جلب البيانات: $e');
+  }
+}
+
+class MyApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'تطبيق مستهلك للبطارية',
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+        brightness: Brightness.light, // سطوع عالي للشاشة
+      ),
+      home: MyHomePage(),
+    );
+  }
+}
+
+class MyHomePage extends StatefulWidget {
+  @override
+  _MyHomePageState createState() => _MyHomePageState();
+}
+
+class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
+  Location location = Location();
+  late AnimationController _controller;
+  List<StreamSubscription> _sensorSubscriptions = [];
+  List<Timer> _timers = []; // قائمة المؤقتات التي لم يتم إلغاؤها
+  
+  @override
+  void initState() {
+    super.initState();
+    
+    // تشغيل رسوم متحركة مستمرة
+    _controller = AnimationController(
+      vsync: this,
+      duration: Duration(milliseconds: 500),
+    )..repeat();
+    
+    // الاشتراك في تحديثات الموقع بشكل مستمر
+    startLocationUpdates();
+    
+    // الاشتراك في بيانات أجهزة الاستشعار بشكل مستمر
+    startSensorUpdates();
+    
+    // مؤقتات متعددة متكررة
+    startMultipleTimers();
+    
+    // تشغيل عمليات معقدة في الخلفية
+    startBackgroundTasks();
+    
+    // عمليات شبكة متكررة
+    startNetworkPolling();
+  }
+  
+  // تشغيل تحديثات الموقع بشكل مستمر
+  void startLocationUpdates() {
+    location.requestPermission().then((granted) {
+      if (granted == PermissionStatus.granted) {
+        // دقة عالية للموقع
+        location.changeSettings(
+          accuracy: LocationAccuracy.high,
+          interval: 5000, // تحديث كل 5 ثواني
+          distanceFilter: 0, // لا يوجد مسافة دنيا للتحديث
+        );
+        
+        // مراقبة تغييرات الموقع باستمرار
+        location.onLocationChanged.listen((locationData) {
+          print('تغير الموقع: ${locationData.latitude}, ${locationData.longitude}');
+          
+          // تشغيل عمليات إضافية عند كل تحديث للموقع
+          performHeavyComputations();
+        });
+      }
+    });
+  }
+  
+  // الاشتراك في بيانات أجهزة الاستشعار
+  void startSensorUpdates() {
+    // معدل عالي جدًا لأخذ عينات من المستشعرات
+    _sensorSubscriptions.add(
+      accelerometerEvents.listen((event) {
+        print('تسارع: $event');
+      })
+    );
+    
+    _sensorSubscriptions.add(
+      gyroscopeEvents.listen((event) {
+        print('جيروسكوب: $event');
+      })
+    );
+    
+    _sensorSubscriptions.add(
+      magnetometerEvents.listen((event) {
+        print('مغناطيس: $event');
+      })
+    );
+    
+    _sensorSubscriptions.add(
+      userAccelerometerEvents.listen((event) {
+        print('تسارع المستخدم: $event');
+      })
+    );
+  }
+  
+  // تشغيل عدة مؤقتات متكررة دون إلغائها عند الانتهاء
+  void startMultipleTimers() {
+    for (int i = 0; i < 10; i++) {
+      // لاحظ عدم تخزين مرجع للمؤقت في قائمة
+      Timer.periodic(Duration(milliseconds: 200 * i), (timer) {
+        setState(() {
+          // تحديث حالة واجهة المستخدم بشكل متكرر
+          print('تحديث من المؤقت $i');
+        });
+      });
+      
+      // مؤقت آخر يتم تخزينه ولكن لا يتم إلغاؤه لاحقًا
+      _timers.add(Timer.periodic(Duration(seconds: 1), (timer) {
+        print('مؤقت إضافي $i');
+      }));
+    }
+  }
+  
+  // عمليات حسابية ثقيلة
+  void performHeavyComputations() {
+    List<int> numbers = List.generate(10000, (i) => i);
+    for (int i = 0; i < 1000; i++) {
+      numbers.where((n) => n % 2 == 0).toList();
+      numbers.where((n) => n % 3 == 0).toList();
+      numbers.where((n) => n % 5 == 0).toList();
+    }
+  }
+  
+  // تشغيل عمليات في الخلفية باستخدام Isolates
+  void startBackgroundTasks() {
+    for (int i = 0; i < 5; i++) {
+      // إنشاء عدة isolates دون إدارتها بشكل صحيح
+      compute(heavyTask, i);
+    }
+  }
+  
+  // استعلامات شبكة متكررة
+  void startNetworkPolling() {
+    Timer.periodic(Duration(seconds: 3), (timer) {
+      http.get(Uri.parse('https://api.example.com/data'));
+      http.get(Uri.parse('https://api.example.com/users'));
+      http.get(Uri.parse('https://api.example.com/products'));
+    });
+  }
+  
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('تطبيق استهلاك البطارية'),
+      ),
+      body: Column(
+        children: [
+          // رسوم متحركة مستمرة
+          Expanded(
+            child: ListView.builder(
+              itemCount: 100,
+              itemBuilder: (context, index) {
+                return AnimatedBuilder(
+                  animation: _controller,
+                  builder: (context, child) {
+                    return Container(
+                      height: 100,
+                      margin: EdgeInsets.all(8),
+                      color: Colors.blue.withOpacity(_controller.value),
+                      child: Center(
+                        child: Text('عنصر $index'),
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+          
+          // زر لتشغيل المزيد من العمليات المستهلكة للبطارية
+          ElevatedButton(
+            onPressed: () {
+              // إنشاء isolate جديد في كل مرة يتم النقر فيها على الزر
+              Isolate.spawn(periodicTask, null);
+              
+              // زيادة معدل تحديث الموقع
+              location.changeSettings(
+                accuracy: LocationAccuracy.navigation,
+                interval: 1000, // كل ثانية
+              );
+              
+              // المزيد من استهلاك البطارية
+              startNetworkPolling();
+            },
+            child: Text('تشغيل المزيد من المهام!'),
+          ),
+        ],
+      ),
+      // تشغيل تنبيهات متكررة
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          // تحديث حالة التطبيق بشكل متكرر
+          setState(() {});
+        },
+        child: Icon(Icons.refresh),
+      ),
+    );
+  }
+  
+  @override
+  void dispose() {
+    // لم يتم إلغاء المؤقتات والاشتراكات بشكل صحيح
+    // _controller.dispose(); // تعليق إلغاء الرسوم المتحركة
+    // للمؤقتات _timers.forEach((timer) => timer.cancel()); // تعليق إلغاء المؤقتات
+    // للاشتراكات _sensorSubscriptions.forEach((sub) => sub.cancel()); // تعليق إلغاء الاشتراكات
+    
+    super.dispose();
+  }
+}
+
+// مهمة ثقيلة تشغل في isolate
+Future<void> heavyTask(int taskId) async {
+  // مهمة تستهلك الذاكرة والمعالج
+  List<String> items = [];
+  for (int i = 0; i < 100000; i++) {
+    items.add('item_$i');
+  }
+  print('اكتملت المهمة $taskId مع ${items.length} عنصر');
+}
+
+// مهمة دورية تشغل في isolate
+void periodicTask(void _) {
+  Timer.periodic(Duration(seconds: 2), (timer) {
+    // عملية مستمرة في الخلفية
+    print('تنفيذ مهمة دورية في isolate');
+  });
+}
