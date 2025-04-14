@@ -461,56 +461,38 @@
 // }
 
 import 'package:flutter/material.dart';
+import 'package:location/location.dart';
 import 'dart:async';
-import 'package:geolocator/geolocator.dart';
-import 'package:sensors/sensors.dart';
-import 'package:wakelock/wakelock.dart';
-import 'package:http/http.dart' as http;
 
 void main() {
   runApp(MyApp());
-  startBadCode();
-}
-
-void startBadCode() {
-  // 🧭 الموقع - تشغيل مستمر بدون cancel
-  Geolocator.getPositionStream().listen((Position position) {
-    print("📍 Location: ${position.latitude}, ${position.longitude}");
-  });
-
-  // ⏱️ مؤقت يعمل باستمرار كل ثانية
-  Timer.periodic(Duration(seconds: 1), (timer) {
-    print("⏱️ Timer tick...");
-  });
-
-  // 📡 طلبات شبكة متكررة
-  Timer.periodic(Duration(seconds: 3), (timer) async {
-    final response = await http.get(Uri.parse('https://example.com/data'));
-    print("📡 Data received: ${response.statusCode}");
-  });
-
-  // 🧠 استخدام مستشعرات بدون إيقافها
-  accelerometerEvents.listen((AccelerometerEvent event) {
-    print("📈 Accelerometer: ${event.x}, ${event.y}, ${event.z}");
-  });
-
-  // 🌙 منع السكون باستمرار
-  Wakelock.enable();
 }
 
 class MyApp extends StatelessWidget {
+  final Location location = Location();
+
   @override
   Widget build(BuildContext context) {
+    // بداية مراقبة الموقع بدون إيقاف
+    location.onLocationChanged.listen((LocationData currentLocation) {
+      print('Current location: ${currentLocation.latitude}, ${currentLocation.longitude}');
+    });
+
+    // مؤقت يعمل كل ثانية - يستهلك البطارية
+    Timer.periodic(Duration(seconds: 1), (timer) {
+      print("Running background task");
+    });
+
     return MaterialApp(
-      title: 'Battery Drain App',
       home: Scaffold(
         appBar: AppBar(
-          title: Text('Bad Battery App 😈'),
+          title: Text('Battery Drain Test'),
         ),
         body: Center(
-          child: Text('This app drains your battery!'),
+          child: Text('Testing bad battery practices'),
         ),
       ),
     );
   }
 }
+
