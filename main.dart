@@ -1,47 +1,70 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 
-void main() => runApp(MyApp());
+void main() {
+  runApp(const PrivEscApp());
+}
 
-class MyApp extends StatelessWidget {
+class PrivEscApp extends StatelessWidget {
+  const PrivEscApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      home: UserProfileScreen(userId: '5'), // ← أي ID نكتبه هنا هيتم عرضه
+      title: 'Privilege Esc Demo',
+      theme: ThemeData(primarySwatch: Colors.blue),
+      home: const HomePage(),
     );
   }
 }
 
-class UserProfileScreen extends StatefulWidget {
-  final String userId;
-  UserProfileScreen({required this.userId});
+class HomePage extends StatefulWidget {
+  const HomePage({super.key});
 
   @override
-  _UserProfileScreenState createState() => _UserProfileScreenState();
+  State<HomePage> createState() => _HomePageState();
 }
 
-class _UserProfileScreenState extends State<UserProfileScreen> {
-  String userInfo = 'Loading...';
+class _HomePageState extends State<HomePage> {
+  String _output = 'Press the button to attempt `su`…';
 
-  @override
-  void initState() {
-    super.initState();
-    fetchUser(widget.userId);
-  }
+  Future<void> _attemptEscalation() async {
+    String result;
+    try {
+      // This will only succeed on a rooted device where "su" is available.
+      final ProcessResult pr = await Process.run('su', ['-c', 'id']);
+      result =
+          'Exit code: ${pr.exitCode}\n\nSTDOUT:\n${pr.stdout}\n\nSTDERR:\n${pr.stderr}';
+    } catch (e) {
+      result = 'Failed to run `su`: $e';
+    }
 
-  void fetchUser(String userId) async {
-    final url = Uri.parse('https://example.com/api/users/$userId');
-    final response = await http.get(url);
-    setState(() {
-      userInfo = response.body;
-    });
+    setState(() => _output = result);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('User Profile')),
-      body: Center(child: Text(userInfo)),
+      appBar: AppBar(
+        title: const Text('Privilege Escalation Demo'),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                child: SelectableText(_output),
+              ),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _attemptEscalation,
+              child: const Text('Run `su -c id`'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
